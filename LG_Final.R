@@ -26,6 +26,11 @@ input.file <- "construction.sas7bdat"
 
 construction <- read_sas(paste(path, input.file,sep = ""))
 
+########  DIVIDE INTO TRAINING AND VALIDATION SETS   ############
+
+ctraining <-
+
+cval <-
 
 ########  DATA EXPLORATION  ################
 rs_table <- with(lowbwt,                                                            ##Example exploration stuff from class code
@@ -36,22 +41,16 @@ hist(lowbwt$age, breaks = 20, col = "gray", xlab = "age", main = "")
 hist(lowbwt$lwt, breaks = 25, col = "gray", xlab = "lwt", main = "")
 
 ########  REGRESSION ANALYSIS  #############
-fit <- glm(y ~ x1 + x2 
-           data = construction, family = binomial(link = "logit"))
+fit <- glm(Win_Bid ~ x1 + x2 
+           data = ctraining, family = binomial(link = "logit"))
 summary(fit)
 
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
 
-## predictions
-newdata <- data.frame(age = c(30, 30),
-                      lwt = c(130, 130),
-                      race = c("black", "white"),
-                      smoke = c(1, 0))
-# type = "link" will return the predicted log(odds) for each of these subjects
-predict(fit, newdata = newdata, type = "link")       ## Scores the new data
+
 
 ## Likelihood Ratio Test
-fit2 <- glm(low ~ age + lwt, data = lowbwt, family = binomial)
+fit2 <- glm(Win_Bid ~ x1 + x2, data = ctraining, family = binomial)
 anova(fit, fit2, test = "LRT")
 
 # can also check for separation using separation.detection()
@@ -65,25 +64,25 @@ influence.measures(fit)
 plot(fit, 4, n.id = 5) # n.id = #points identified on the plot
 
 ### dfbetas plots
-# age:
-dfbetasPlots(fit, terms = "age", id.n = 5,
+# some variable:
+dfbetasPlots(fit, terms = "soem variable", id.n = 5,
              col = ifelse(fit$y == 1, "red", "blue"))
 
 ### partial residuals ###
-# age:
-visreg(fit, "age", gg = TRUE, points = list(col = "black")) +
+# soem variable:
+visreg(fit, "some variable", gg = TRUE, points = list(col = "black")) +
   geom_smooth(col = "red", fill = "red") + theme_bw() +
-  labs(title = "partial residual plot for age",
-       x = "age", y = "partial (deviance) residuals")
+  labs(title = "partial residual plot for some variable",
+       x = "some variable", y = "partial (deviance) residuals")
 
 ### GAMs ###
 # fit model as a GAM:
-fit.gam <- gam(low ~ s(age) + lwt + smoke + race,
-               data = lowbwt, family = binomial, method = "REML")
+fit.gam <- gam(Win_bid ~ s(x1) + x2,
+               data = ctraining, family = binomial, method = "REML")
 summary(fit.gam)
 
-# plot estimated effect of age
-plot(fit.gam, ylab = "f(age)", shade = TRUE, main = "effect of age", jit = TRUE,
+# plot estimated effect of some variable
+plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of soem variable", jit = TRUE,
      seWithMean = TRUE)
 
 #############  Model Assessment  ###############
@@ -170,3 +169,8 @@ ggplot(df, aes(phat, fill = factor(y))) +
 ### c-statistic and Somers' D ###
 # predicted prob goes first, outcome second
 rcorr.cens(fitted(fit), fit$y)[-c(5, 6, 9)] # ignoring output i don't need
+
+## predictions
+
+# type = "link" will return the predicted log(odds) for each of these subjects
+predict(fit, newdata = cval, type = "link")       ## Scores the new data
