@@ -87,4 +87,86 @@ plot(fit.gam, ylab = "f(age)", shade = TRUE, main = "effect of age", jit = TRUE,
      seWithMean = TRUE)
 
 #############  Model Assessment  ###############
+# AIC and BIC
+AIC(fit)
+BIC(fit)
 
+PseudoR2(fit, which = c("Cox", "Nagelkerke", "McFadden"))
+
+### Brier score function ###
+brier_score <- function(obj, new_x = NULL, new_y = NULL){
+  # computes [scaled] brier score
+  #
+  # inputs:
+  # 1. obj: either a model from glm() or a data frame.
+  #         the data frame must have a vector responses "y" and a vector of
+  #         either probabilities "p" or linear predictor "lp".
+  # 2. new_x: specify new dataset to get predicted probabilities for new obs.
+  #             if NULL, the estimated probabilities from original obs will
+  #             be used.
+  # 3. new_y: use new responses. if NULL, original ones will be used.
+  #
+  # output:
+  #   brier score, scaled brier score
+  
+  if(is.null(new_y)){
+    y <- obj$y
+  } else {
+    y <- new_y
+  }
+  
+  p_obs <- mean(y)
+  
+  if(any(class(obj) == "glm")){
+    if(is.null(new_x)){
+      p <- predict(obj, newdata = new_x, type = "response")
+      lp <- predict(obj, newdata = new_x, type = "link")
+    } else {
+      lp <- obj$linear
+      p <- fitted(obj)
+    }
+  } else if(is.null(obj$p)) {
+    lp <- obj$lp
+    p <- fitted(obj)
+  } else {
+    p <- obj$p
+    lp <- obj$linear
+  }
+  
+  # brier score
+  brier_score <- mean((y - p)^2)
+  
+  # max brier score is just the observed proportion
+  brier_max <- p_obs*((1 - p_obs)^2) + (1 - p_obs)*(p_obs^2)
+  
+  # scaled brier score
+  # ranges from 0 to 1---lower is better
+  brier_scaled <- brier_score/brier_max
+  # essentially, 1 - brier_scaled is the %improvement over null model
+  
+  res <- data.frame(brier_score = brier_score,
+                    brier_max = brier_max,
+                    brier_scaled = brier_scaled)
+  res
+}
+
+brier_score(fit)
+
+
+### discrimination slope = mean(p1) - mean(p0) ###
+D <- mean(fitted(fit)[fit$y == 1]) - mean(fitted(fit)[fit$y == 0])
+# alternatively:
+# D <- diff(aggregate(fitted(fit), by = list(fit$y == 0, fit$y == 1), FUN = mean)$x)
+
+# histogram of predicted probabilities by outcome
+# create data frame of outcome and predicted probabilities
+df <- data.frame(y = fit$y,
+                 phat = fitted(fit))
+ggplot(df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+### c-statistic and Somers' D ###
+# predicted prob goes first, outcome second
+rcorr.cens(fitted(fit), fit$y)[-c(5, 6, 9)] # ignoring output i don't need
