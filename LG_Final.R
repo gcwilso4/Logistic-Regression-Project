@@ -1,48 +1,84 @@
 rm(list=ls())
 
-
+install.packages("pastecs")
 install.packages("ROCR")
 install.packages("DescTools")
 install.packages("Hmisc")
+install.packages('visreg')
+install.packages('car')
 
 ## All libraries given to us in code snippets in case we need them
 library(haven)
-library(MASS)
-library(visreg)
-library(brglm)
+library(pastecs)
+library(caret)
 library(tidyverse)
-library(ROCR) 
-library(DescTools)
-library(Hmisc)
-library(mgcv)
-library(car)
+# 
+# library(MASS)
+# library(visreg)
+# library(brglm)
+# library(ROCR) 
+# library(DescTools)
+# library(Hmisc)
+# library(mgcv)
+# library(car)
 
 
-setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
 
-path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
+#path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
 
 input.file <- "construction.sas7bdat"
 
 construction <- read_sas(paste(path, input.file,sep = ""))
 
-########  DIVIDE INTO TRAINING AND VALIDATION SETS   ############
+########  CLEANING   ############
 
-ctraining <-
+#DIVIDE INTO TRAINING / VALIDATION SETS
+set.seed(123)
+train_ind <- createDataPartition(construction$Estimated_Cost__Millions_, p=0.70, list=FALSE)
 
-cval <-
+ctrain <- construction[train_ind,]
+cval <- construction[-train_ind,]
+
+#DIVIDE TRAINIG INTO CONTINUOUS, CATEGORICAL
+continuous <- c(
+  "Estimated_Cost__Millions_",
+  "Estimated_Years_to_Complete",
+  "Bid_Price__Millions_",
+  "Number_of_Competitor_Bids",
+  "Winning_Bid_Price__Millions_",
+  "Cost_After_Engineering_Estimate_")
+
+ctrain_cont <- select(ctrain, continuous)
+ctrain_cat <- select(ctrain, -continuous)
+ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
 
 ########  DATA EXPLORATION  ################
-rs_table <- with(lowbwt,                                                            ##Example exploration stuff from class code
+
+#bar charts
+ggplot(data=ctrain_cat, aes(Sector, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain_cat, aes(Region_of_Country, fill=Win_Bid)) + geom_bar()
+
+cor(ctrain_cont) #Correlation matrix of continuous variables
+
+options(scipen=100)
+options(digits=2)
+stat.desc(ctrain_cont) #summary statistics of continuous, APP A?
+
+
+
+
+cat_table <- with(lowbwt,                                                            ##Example exploration stuff from class code
                  table(factor(smoke, labels = c("non-smoker", "smoker")),
                        race))
 addmargins(rs_table) # add row and column totals
-hist(lowbwt$age, breaks = 20, col = "gray", xlab = "age", main = "")
-hist(lowbwt$lwt, breaks = 25, col = "gray", xlab = "lwt", main = "")
 
 ########  REGRESSION ANALYSIS  #############
 fit <- glm(Win_Bid ~ x1 + x2 
-           data = ctraining, family = binomial(link = "logit"))
+           data = ctrain, family = binomial(link = "logit"))
 summary(fit)
 
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
@@ -50,7 +86,7 @@ exp(confint(fit))               ## Get likelihood confidence intervals (Mass Lib
 
 
 ## Likelihood Ratio Test
-fit2 <- glm(Win_Bid ~ x1 + x2, data = ctraining, family = binomial)
+fit2 <- glm(Win_Bid ~ x1 + x2, data = ctrain, family = binomial)
 anova(fit, fit2, test = "LRT")
 
 # can also check for separation using separation.detection()
@@ -78,7 +114,7 @@ visreg(fit, "some variable", gg = TRUE, points = list(col = "black")) +
 ### GAMs ###
 # fit model as a GAM:
 fit.gam <- gam(Win_bid ~ s(x1) + x2,
-               data = ctraining, family = binomial, method = "REML")
+               data = ctrain, family = binomial, method = "REML")
 summary(fit.gam)
 
 # plot estimated effect of some variable
