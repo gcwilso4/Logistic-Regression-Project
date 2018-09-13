@@ -17,14 +17,14 @@ library(caret)
 library(tidyverse)
 library(corrplot)
 # 
-# library(MASS)
-# library(visreg)
+library(MASS)
+library(visreg)
 # library(brglm)
 # library(ROCR) 
 # library(DescTools)
 # library(Hmisc)
-# library(mgcv)
-# library(car)
+library(mgcv)
+library(car)
 
 
 setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
@@ -119,10 +119,24 @@ lapply(competitors, freq.expec) # Max diff from expected frequency: 4% with comp
 ############################################
 ########  REGRESSION ANALYSIS  #############
 ############################################
-
-fit <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + Competitor_D, 
+fit1 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
            data = ctrain, family = binomial(link = "logit"))
-summary(fit)
+summary(fit1)  ## AIC - 185
+
+fit2 <- glm(Win ~ Region_of_Country + Number_of_Competitor_Bids, 
+           data = ctrain, family = binomial(link = "logit"))
+summary(fit2) ## AIC - 189.9
+
+fit3 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ +
+              Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country,
+            data = ctrain, family = binomial(link = "logit"))
+fit.step <- stepAIC(fit, direction=c('both'))
+summary(fit.step)  ## AIC - 183
+
+fit4 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
+            data = ctrain, family = binomial(link = "logit"))
+summary(fit4)  ## AIC - 
+
 
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
 
@@ -140,18 +154,18 @@ separation.detection(fit)
 influence.measures(fit)
 
 ### plot Cook's distance
-plot(fit, 4, n.id = 5) # n.id = #points identified on the plot
+plot(fit2, 4, n.id = 5) # n.id = #points identified on the plot
 
 ### dfbetas plots
 # some variable:
-dfbetasPlots(fit, terms = "some variable", id.n = 5,
+dfbetasPlots(fit, terms = "Number_of_Competitor_Bids", id.n = 5,
              col = ifelse(fit$y == 1, "red", "blue"))
 
 ### partial residuals ###
-# some variable:
-visreg(fit, "some variable", gg = TRUE, points = list(col = "black")) +
+# Number of Competitor Bids:
+visreg(fit, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
   geom_smooth(col = "red", fill = "red") + theme_bw() +
-  labs(title = "partial residual plot for some variable",
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
        x = "some variable", y = "partial (deviance) residuals")
 
 ### GAMs ###
@@ -161,7 +175,7 @@ fit.gam <- gam(Win ~ s(x1) + x2,
 summary(fit.gam)
 
 # plot estimated effect of some variable
-plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of soem variable", jit = TRUE,
+plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of some variable", jit = TRUE,
      seWithMean = TRUE)
 
 ################################################
