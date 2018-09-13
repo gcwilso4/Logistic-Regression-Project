@@ -7,6 +7,7 @@ rm(list=ls())
 # install.packages("Hmisc")
 # install.packages('visreg')
 # install.packages('car')
+# install.packages("caret")
 
 
 ## All libraries given to us in code snippets in case we need them
@@ -26,11 +27,11 @@ library(corrplot)
 # library(car)
 
 
-#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
-setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
+setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+#setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
 
-#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
-path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
+path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+#path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
 
 input.file <- "construction.sas7bdat"
@@ -147,7 +148,7 @@ dfbetasPlots(fit, terms = "some variable", id.n = 5,
              col = ifelse(fit$y == 1, "red", "blue"))
 
 ### partial residuals ###
-# soem variable:
+# some variable:
 visreg(fit, "some variable", gg = TRUE, points = list(col = "black")) +
   geom_smooth(col = "red", fill = "red") + theme_bw() +
   labs(title = "partial residual plot for some variable",
