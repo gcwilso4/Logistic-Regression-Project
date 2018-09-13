@@ -129,7 +129,7 @@ exp(confint(fit))               ## Get likelihood confidence intervals (Mass Lib
 
 
 ## Likelihood Ratio Test
-fit2 <- glm(Win_Bid ~ x1 + x2, data = ctrain, family = binomial)
+fit2 <- glm(Win ~ x1 + x2, data = ctrain, family = binomial)
 anova(fit, fit2, test = "LRT")
 
 # can also check for separation using separation.detection()
@@ -156,7 +156,7 @@ visreg(fit, "some variable", gg = TRUE, points = list(col = "black")) +
 
 ### GAMs ###
 # fit model as a GAM:
-fit.gam <- gam(Win_bid ~ s(x1) + x2,
+fit.gam <- gam(Win ~ s(x1) + x2,
                data = ctrain, family = binomial, method = "REML")
 summary(fit.gam)
 
