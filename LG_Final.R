@@ -1,17 +1,20 @@
 rm(list=ls())
 
-install.packages("pastecs")
-install.packages("ROCR")
-install.packages("DescTools")
-install.packages("Hmisc")
-install.packages('visreg')
-install.packages('car')
+# install.packages("pastecs")
+# install.packages('corrplot')
+# install.packages("ROCR")
+# install.packages("DescTools")
+# install.packages("Hmisc")
+# install.packages('visreg')
+# install.packages('car')
+
 
 ## All libraries given to us in code snippets in case we need them
 library(haven)
 library(pastecs)
 library(caret)
 library(tidyverse)
+library(corrplot)
 # 
 # library(MASS)
 # library(visreg)
@@ -34,13 +37,24 @@ input.file <- "construction.sas7bdat"
 
 construction <- read_sas(paste(path, input.file,sep = ""))
 
-########  CLEANING   ############
+############################################
+########  CLEANING   #######################
+############################################
+
+# ADDING METRICS OF INTEREST
+# of competitors
+construction <- construction %>%
+  mutate(comp.count = select(., Competitor_A:Competitor_J) %>% apply(1, sum, na.rm=TRUE)) %>%
+  mutate(profit = Bid_Price__Millions_ - Estimated_Cost__Millions_) %>%
+  mutate(perc_over_bid = (Bid_Price__Millions_ - Winning_Bid_Price__Millions_)/Winning_Bid_Price__Millions_) %>%
+  mutate(Win = as.numeric(as.factor(Win_Bid))-1) #converts to factor levels 1 and 2 then subtracts 1 for binary
+#needed 0,1 for regression modelling later
 
 #DIVIDE INTO TRAINING / VALIDATION SETS
 set.seed(123)
 train_ind <- createDataPartition(construction$Estimated_Cost__Millions_, p=0.70, list=FALSE)
 
-ctrain <- construction[train_ind,]
+ctrain <<- construction[train_ind,]
 cval <- construction[-train_ind,]
 
 #DIVIDE TRAINIG INTO CONTINUOUS, CATEGORICAL
@@ -50,34 +64,62 @@ continuous <- c(
   "Bid_Price__Millions_",
   "Number_of_Competitor_Bids",
   "Winning_Bid_Price__Millions_",
-  "Cost_After_Engineering_Estimate_")
+  "Cost_After_Engineering_Estimate_",
+  "profit",
+  "perc_over_bid",
+  "comp.count")
 
 ctrain_cont <- select(ctrain, continuous)
 ctrain_cat <- select(ctrain, -continuous)
 ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
+ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_"))#reduced to get rid of some redundant variables
 
+############################################
 ########  DATA EXPLORATION  ################
+############################################
 
-#bar charts
-ggplot(data=ctrain_cat, aes(Sector, fill=Win_Bid)) + geom_bar()
-ggplot(data=ctrain_cat, aes(Region_of_Country, fill=Win_Bid)) + geom_bar()
+#bar charts & histos
+ggplot(data=ctrain, aes(Sector, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(Region_of_Country, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(Competitor_A, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(factor(comp.count), fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(Winning_Bid_Price__Millions_, fill=Win_Bid)) + geom_histogram()
+ggplot(data=ctrain, aes(Estimated_Years_to_Complete, fill=Win_Bid)) + geom_histogram()
+ggplot(data=ctrain, aes(Number_of_Competitor_Bids, fill=Win_Bid)) + geom_histogram()
+hist(ctrain$Number_of_Competitor_Bids, breaks=25)
+plot(ctrain_cont2)
 
-cor(ctrain_cont) #Correlation matrix of continuous variables
+#Correlation matrix of continuous variables APP A?
+c.cor <- cor(ctrain_cont) 
+corrplot(c.cor, method = "number") #Some are perfectly correlated, comp.count not that strong with number of competitor bids!?
 
+#summary statistics of continuous, APP A?
 options(scipen=100)
 options(digits=2)
-stat.desc(ctrain_cont) #summary statistics of continuous, APP A?
+stat.desc(ctrain_cont) 
+
+# basic frequency tables 
+table1 <- round(prop.table(with(ctrain, table(Region_of_Country, Win_Bid))),4)
+table2 <- addmargins(round(prop.table(with(ctrain, table(Sector, Win_Bid))),4))
+table3 <- with(ctrain, table(Sector, Region_of_Country, Win_Bid))
+round(prop.table(table3),4)
+round(addmargins(prop.table(table3)),4)
+
+#difference in freq created by competitors
+freq.expec <- function(var){
+  freq.tab <- addmargins(prop.table(with(ctrain, table(var, Win_Bid))))
+  diff <- round((freq.tab - chisq.test(freq.tab)$expected),4)
+  print(diff)
+}
+competitors <- select(ctrain, Competitor_A:Competitor_J)
+lapply(competitors, freq.expec) # Max diff from expected frequency: 4% with competitor H and F
 
 
-
-
-cat_table <- with(lowbwt,                                                            ##Example exploration stuff from class code
-                 table(factor(smoke, labels = c("non-smoker", "smoker")),
-                       race))
-addmargins(rs_table) # add row and column totals
-
+############################################
 ########  REGRESSION ANALYSIS  #############
-fit <- glm(Win_Bid ~ x1 + x2 
+############################################
+
+fit <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + Competitor_D, 
            data = ctrain, family = binomial(link = "logit"))
 summary(fit)
 
@@ -101,7 +143,7 @@ plot(fit, 4, n.id = 5) # n.id = #points identified on the plot
 
 ### dfbetas plots
 # some variable:
-dfbetasPlots(fit, terms = "soem variable", id.n = 5,
+dfbetasPlots(fit, terms = "some variable", id.n = 5,
              col = ifelse(fit$y == 1, "red", "blue"))
 
 ### partial residuals ###
@@ -121,7 +163,10 @@ summary(fit.gam)
 plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of soem variable", jit = TRUE,
      seWithMean = TRUE)
 
+################################################
 #############  Model Assessment  ###############
+################################################
+
 # AIC and BIC
 AIC(fit)
 BIC(fit)
