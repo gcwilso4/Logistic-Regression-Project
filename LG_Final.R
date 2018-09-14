@@ -16,9 +16,15 @@ library(pastecs)
 library(caret)
 library(corrplot)
 <<<<<<< HEAD
+<<<<<<< HEAD
 library(tidyverse)
 library(MASS)
 # library(visreg)
+=======
+# 
+library(MASS)
+library(visreg)
+>>>>>>> e295c16ce5d136ebb6cf7b292cd1ee71e1ef4b54
 =======
 # 
 library(MASS)
@@ -132,46 +138,24 @@ fit1 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + E
            data = ctrain, family = binomial(link = "logit"))
 summary(fit1)  ## AIC - 185
 
-<<<<<<< HEAD
-fit <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ + 
-             Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country, 
-           data = ctrain, family = binomial(link = "logit"))
-fit2 <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + comp.count + Region_of_Country, 
-           data = ctrain, family = binomial(link = "logit"))
-fit2 <- glm(Win ~ Estimated_Years_to_Complete + Region_of_Country, 
-            data = ctrain, family = binomial(link = "logit"))
-fit3 <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + Region_of_Country + Number_of_Competitor_Bids,
-           data = ctrain, family = binomial(link = "logit"))
-fit4 <- glm(Win ~ Estimated_Years_to_Complete + Region_of_Country + Number_of_Competitor_Bids,
-            data = ctrain, family = binomial(link = "logit"))
-fit <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ + 
-             Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country, 
-           data = ctrain, family = binomial(link = "logit"))
-fit.step <- stepAIC(fit, direction=c('both'))
-fit.5 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ + comp.count + Number_of_Competitor_Bids + Region_of_Country,  
-             data = ctrain, family = binomial(link = "logit"))
-summary(fit.5)
-
-
-(fit$aic)/(fit2$aic)
-summary(fit)
-summary(fit2)
-=======
 fit2 <- glm(Win ~ Region_of_Country + Number_of_Competitor_Bids, 
            data = ctrain, family = binomial(link = "logit"))
+
 summary(fit2) ## AIC - 189.9
+
+(fit$aic)/(fit2$aic)
 
 fit3 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ +
               Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country,
             data = ctrain, family = binomial(link = "logit"))
 fit.step <- stepAIC(fit, direction=c('both'))
+
 summary(fit.step)  ## AIC - 183
 
 fit4 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
             data = ctrain, family = binomial(link = "logit"))
 summary(fit4)  ## AIC - 
 
->>>>>>> e295c16ce5d136ebb6cf7b292cd1ee71e1ef4b54
 
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
 
