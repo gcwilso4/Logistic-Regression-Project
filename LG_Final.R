@@ -14,24 +14,29 @@ rm(list=ls())
 library(haven)
 library(pastecs)
 library(caret)
-library(tidyverse)
 library(corrplot)
-# 
-# library(MASS)
+<<<<<<< HEAD
+library(tidyverse)
+library(MASS)
 # library(visreg)
+=======
+# 
+library(MASS)
+library(visreg)
+>>>>>>> e295c16ce5d136ebb6cf7b292cd1ee71e1ef4b54
 # library(brglm)
 # library(ROCR) 
 # library(DescTools)
 # library(Hmisc)
-# library(mgcv)
-# library(car)
+library(mgcv)
+library(car)
 
 
-setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
-#setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
+#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
 
-path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
-#path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
+#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
 
 input.file <- "construction.sas7bdat"
@@ -54,7 +59,7 @@ construction <- construction %>%
 #DIVIDE INTO TRAINING / VALIDATION SETS
 set.seed(123)
 train_ind <- createDataPartition(construction$Estimated_Cost__Millions_, p=0.70, list=FALSE)
-
+help("createDataPartition")
 ctrain <<- construction[train_ind,]
 cval <- construction[-train_ind,]
 
@@ -75,6 +80,8 @@ ctrain_cat <- select(ctrain, -continuous)
 ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
 ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_"))#reduced to get rid of some redundant variables
 
+#TODO Add actual sector names
+
 ############################################
 ########  DATA EXPLORATION  ################
 ############################################
@@ -83,6 +90,7 @@ ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid
 ggplot(data=ctrain, aes(Sector, fill=Win_Bid)) + geom_bar()
 ggplot(data=ctrain, aes(Region_of_Country, fill=Win_Bid)) + geom_bar()
 ggplot(data=ctrain, aes(Competitor_A, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(factor(Number_of_Competitor_Bids), fill=Win_Bid)) + geom_bar()
 ggplot(data=ctrain, aes(factor(comp.count), fill=Win_Bid)) + geom_bar()
 ggplot(data=ctrain, aes(Winning_Bid_Price__Millions_, fill=Win_Bid)) + geom_histogram()
 ggplot(data=ctrain, aes(Estimated_Years_to_Complete, fill=Win_Bid)) + geom_histogram()
@@ -103,6 +111,7 @@ stat.desc(ctrain_cont)
 table1 <- round(prop.table(with(ctrain, table(Region_of_Country, Win_Bid))),4)
 table2 <- addmargins(round(prop.table(with(ctrain, table(Sector, Win_Bid))),4))
 table3 <- with(ctrain, table(Sector, Region_of_Country, Win_Bid))
+#TODO Comment this
 round(prop.table(table3),4)
 round(addmargins(prop.table(table3)),4)
 
@@ -119,17 +128,57 @@ lapply(competitors, freq.expec) # Max diff from expected frequency: 4% with comp
 ############################################
 ########  REGRESSION ANALYSIS  #############
 ############################################
-
-fit <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + Competitor_D, 
+fit1 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
            data = ctrain, family = binomial(link = "logit"))
+summary(fit1)  ## AIC - 185
+
+<<<<<<< HEAD
+fit <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ + 
+             Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country, 
+           data = ctrain, family = binomial(link = "logit"))
+fit2 <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + comp.count + Region_of_Country, 
+           data = ctrain, family = binomial(link = "logit"))
+fit2 <- glm(Win ~ Estimated_Years_to_Complete + Region_of_Country, 
+            data = ctrain, family = binomial(link = "logit"))
+fit3 <- glm(Win ~ Estimated_Years_to_Complete + Winning_Bid_Price__Millions_ + Region_of_Country + Number_of_Competitor_Bids,
+           data = ctrain, family = binomial(link = "logit"))
+fit4 <- glm(Win ~ Estimated_Years_to_Complete + Region_of_Country + Number_of_Competitor_Bids,
+            data = ctrain, family = binomial(link = "logit"))
+fit <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ + 
+             Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country, 
+           data = ctrain, family = binomial(link = "logit"))
+fit.step <- stepAIC(fit, direction=c('both'))
+fit.5 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ + comp.count + Number_of_Competitor_Bids + Region_of_Country,  
+             data = ctrain, family = binomial(link = "logit"))
+summary(fit.5)
+
+
+(fit$aic)/(fit2$aic)
 summary(fit)
+summary(fit2)
+=======
+fit2 <- glm(Win ~ Region_of_Country + Number_of_Competitor_Bids, 
+           data = ctrain, family = binomial(link = "logit"))
+summary(fit2) ## AIC - 189.9
+
+fit3 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ +
+              Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country,
+            data = ctrain, family = binomial(link = "logit"))
+fit.step <- stepAIC(fit, direction=c('both'))
+summary(fit.step)  ## AIC - 183
+
+fit4 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
+            data = ctrain, family = binomial(link = "logit"))
+summary(fit4)  ## AIC - 
+
+>>>>>>> e295c16ce5d136ebb6cf7b292cd1ee71e1ef4b54
 
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
 
 
 
 ## Likelihood Ratio Test
-fit2 <- glm(Win_Bid ~ x1 + x2, data = ctrain, family = binomial)
+fit2 <- glm(Win ~ x1 + x2, data = ctrain, family = binomial)
 anova(fit, fit2, test = "LRT")
 
 # can also check for separation using separation.detection()
@@ -140,28 +189,28 @@ separation.detection(fit)
 influence.measures(fit)
 
 ### plot Cook's distance
-plot(fit, 4, n.id = 5) # n.id = #points identified on the plot
+plot(fit2, 4, n.id = 5) # n.id = #points identified on the plot
 
 ### dfbetas plots
 # some variable:
-dfbetasPlots(fit, terms = "some variable", id.n = 5,
+dfbetasPlots(fit, terms = "Number_of_Competitor_Bids", id.n = 5,
              col = ifelse(fit$y == 1, "red", "blue"))
 
 ### partial residuals ###
-# some variable:
-visreg(fit, "some variable", gg = TRUE, points = list(col = "black")) +
+# Number of Competitor Bids:
+visreg(fit, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
   geom_smooth(col = "red", fill = "red") + theme_bw() +
-  labs(title = "partial residual plot for some variable",
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
        x = "some variable", y = "partial (deviance) residuals")
 
 ### GAMs ###
 # fit model as a GAM:
-fit.gam <- gam(Win_bid ~ s(x1) + x2,
+fit.gam <- gam(Win ~ s(x1) + x2,
                data = ctrain, family = binomial, method = "REML")
 summary(fit.gam)
 
 # plot estimated effect of some variable
-plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of soem variable", jit = TRUE,
+plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of some variable", jit = TRUE,
      seWithMean = TRUE)
 
 ################################################
