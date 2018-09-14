@@ -1,3 +1,8 @@
+############################################
+########  LOGISTIC PROJECT  ################
+############################################
+
+
 rm(list=ls())
 
 # install.packages("pastecs")
@@ -15,27 +20,16 @@ library(haven)
 library(pastecs)
 library(caret)
 library(corrplot)
-<<<<<<< HEAD
-<<<<<<< HEAD
-library(tidyverse)
-library(MASS)
-# library(visreg)
-=======
-# 
 library(MASS)
 library(visreg)
->>>>>>> e295c16ce5d136ebb6cf7b292cd1ee71e1ef4b54
-=======
-# 
 library(MASS)
-library(visreg)
->>>>>>> e295c16ce5d136ebb6cf7b292cd1ee71e1ef4b54
 # library(brglm)
 # library(ROCR) 
 # library(DescTools)
 # library(Hmisc)
 library(mgcv)
 library(car)
+library(tidyverse)
 
 
 #setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
@@ -46,12 +40,12 @@ path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logisti
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
 
 input.file <- "construction.sas7bdat"
-
 construction <- read_sas(paste(path, input.file,sep = ""))
 
 ############################################
 ########  CLEANING   #######################
 ############################################
+#by S.Powell
 
 # ADDING METRICS OF INTEREST
 # of competitors
@@ -61,6 +55,24 @@ construction <- construction %>%
   mutate(perc_over_bid = (Bid_Price__Millions_ - Winning_Bid_Price__Millions_)/Winning_Bid_Price__Millions_) %>%
   mutate(Win = as.numeric(as.factor(Win_Bid))-1) #converts to factor levels 1 and 2 then subtracts 1 for binary
 #needed 0,1 for regression modelling later
+
+#Defining sectors
+Sec.names <- c("Transportation",
+  "Lodging",
+  "Multi-family residential",
+  "Amusement/recreation",
+  "Highway/street",
+  "Education",
+  "Healthcare",
+  "Manufacturing",
+  "Power",
+  "Military") #assumed order based on PDF. No actual key provided
+Sector <- as.character(c(1:10))
+sector.names <- as.data.frame(cbind(Sector, Sec.names))
+construction$Sector <- as.character(construction$Sector) 
+construction <- left_join(construction, sector.names, by="Sector")
+construction <- construction[,c(1:4,24,5:23)] #reordering to check merge success
+
 
 #DIVIDE INTO TRAINING / VALIDATION SETS
 set.seed(123)
@@ -84,13 +96,14 @@ continuous <- c(
 ctrain_cont <- select(ctrain, continuous)
 ctrain_cat <- select(ctrain, -continuous)
 ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
-ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_"))#reduced to get rid of some redundant variables
+ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_")) #reduced to get rid of some redundant variables
 
 #TODO Add actual sector names
 
 ############################################
 ########  DATA EXPLORATION  ################
 ############################################
+#By G.Wilson and S.Powell
 
 #bar charts & histos
 ggplot(data=ctrain, aes(Sector, fill=Win_Bid)) + geom_bar()
@@ -114,16 +127,22 @@ options(digits=2)
 stat.desc(ctrain_cont) 
 
 # basic frequency tables 
+# Warning: 
+  # prop.table() determines table values as proportion of sum of ALL values in table
+  # addmargins() sums rows and columns to give "sum" values on ends
+  # Thus, use prop.table() within addmargins() to avoid counting sums in proportion calcs
 table1 <- round(prop.table(with(ctrain, table(Region_of_Country, Win_Bid))),4)
 table2 <- addmargins(round(prop.table(with(ctrain, table(Sector, Win_Bid))),4))
+table2
 table3 <- with(ctrain, table(Sector, Region_of_Country, Win_Bid))
-#TODO Comment this
 round(prop.table(table3),4)
 round(addmargins(prop.table(table3)),4)
 
 #difference in freq created by competitors
 freq.expec <- function(var){
+  #calcs normal frequency table
   freq.tab <- addmargins(prop.table(with(ctrain, table(var, Win_Bid))))
+  #calcs difference b/w freq table and expected freq table
   diff <- round((freq.tab - chisq.test(freq.tab)$expected),4)
   print(diff)
 }
@@ -134,6 +153,8 @@ lapply(competitors, freq.expec) # Max diff from expected frequency: 4% with comp
 ############################################
 ########  REGRESSION ANALYSIS  #############
 ############################################
+
+# BUILDING CANDIDATE MODELS by Team during 2018.09.13 Meeting
 fit1 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
            data = ctrain, family = binomial(link = "logit"))
 summary(fit1)  ## AIC - 185
@@ -143,18 +164,28 @@ fit2 <- glm(Win ~ Region_of_Country + Number_of_Competitor_Bids,
 
 summary(fit2) ## AIC - 189.9
 
-(fit$aic)/(fit2$aic)
+(fit1$aic)/(fit2$aic)
 
 fit3 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ +
               Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country,
             data = ctrain, family = binomial(link = "logit"))
-fit.step <- stepAIC(fit, direction=c('both'))
+summary(fit3)
+fit3.step <- stepAIC(fit3, direction=c('both'))
 
-summary(fit.step)  ## AIC - 183
+summary(fit3.step)  ## AIC - 183
 
-fit4 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
+fit4 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + 
+              Estimated_Cost__Millions_ + Sector, 
             data = ctrain, family = binomial(link = "logit"))
-summary(fit4)  ## AIC - 
+summary(fit4) ## AIC - 173
+# Ran stepAIC() on fit4, but it just removed Estimated_Cost var for AIC of 171.6
+
+# CANDIDATE MODELS
+fit1
+fit2
+fit3.step
+fit4
+
 
 
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
