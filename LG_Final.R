@@ -22,6 +22,7 @@ library(caret)
 library(corrplot)
 library(MASS)
 library(visreg)
+library(MASS)
 # library(brglm)
 # library(ROCR) 
 # library(DescTools)
@@ -31,14 +32,12 @@ library(car)
 library(tidyverse)
 
 
-#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
 #setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
-setwd("C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression")
 
-#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
 #path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
-path <-("C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression\\")
 
 input.file <- "construction.sas7bdat"
 construction <- read_sas(paste(path, input.file,sep = ""))
