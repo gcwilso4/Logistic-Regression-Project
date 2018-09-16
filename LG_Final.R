@@ -282,12 +282,47 @@ dfbetasPlots(fit4, terms = "Sector", id.n = 5,
 ###  If you have any concerns/questions, ask Bill for more info  ###
 
 
-### partial residuals ###
-# Number of Competitor Bids:
-visreg(fit, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+### Partial residual Plots ###
+### Grant F, 09/16/2018
+## Fit 1:
+
+visreg(fit1, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
   geom_smooth(col = "red", fill = "red") + theme_bw() +
   labs(title = "Partial Residual Plot for Number of Competitor Bids",
        x = "some variable", y = "partial (deviance) residuals")
+visreg(fit1, "Estimated_Cost__Millions_", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Cost in Millions",
+       x = "some variable", y = "partial (deviance) residuals")
+## Fit 2
+visreg(fit2, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+## Fit 3
+visreg(fit3, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+visreg(fit3, "Estimated_Years_to_Complete", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Years to Complete",
+       x = "some variable", y = "partial (deviance) residuals") # this one doesn't look good
+visreg(fit3, "Estimated_Cost__Millions_", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Cost in Millions",
+       x = "some variable", y = "partial (deviance) residuals")
+## Fit 4
+visreg(fit4, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+visreg(fit4, "Estimated_Cost__Millions_", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Cost in Millions",
+       x = "some variable", y = "partial (deviance) residuals")
+
+### End Grant Code
 
 ### GAMs ###
 # fit model as a GAM:
