@@ -32,12 +32,14 @@ library(car)
 library(tidyverse)
 
 
-setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
 #setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
+setwd("C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression")
 
-path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
 #path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
+path <- "C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression\\"
 
 input.file <- "construction.sas7bdat"
 construction <- read_sas(paste(path, input.file,sep = ""))
@@ -93,10 +95,10 @@ continuous <- c(
   "perc_over_bid",
   "comp.count")
 
-ctrain_cont <- select(ctrain, continuous)
-ctrain_cat <- select(ctrain, -continuous)
+ctrain_cont <- dplyr::select(ctrain, continuous)
+ctrain_cat <- dplyr::select(ctrain, setdiff(colnames(ctrain), continuous))
 ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
-ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_")) #reduced to get rid of some redundant variables
+ctrain_cont2 <- dplyr::select(ctrain_cont, setdiff(colnames(ctrain_cont), c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_"))) #reduced to get rid of some redundant variables
 
 
 ############################################
