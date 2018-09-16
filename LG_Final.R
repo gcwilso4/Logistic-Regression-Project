@@ -32,11 +32,11 @@ library(car)
 library(tidyverse)
 
 
-#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
-setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
+setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+#setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
 
-#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
-path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
+path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+#path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
 
 input.file <- "construction.sas7bdat"
@@ -98,7 +98,6 @@ ctrain_cat <- select(ctrain, -continuous)
 ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
 ctrain_cont2 <- select(ctrain_cont, -c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_")) #reduced to get rid of some redundant variables
 
-#TODO Add actual sector names
 
 ############################################
 ########  DATA EXPLORATION  ################
@@ -191,10 +190,9 @@ fit4
 exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
 
 
-
-## Likelihood Ratio Test
-fit2 <- glm(Win ~ x1 + x2, data = ctrain, family = binomial)
-anova(fit, fit2, test = "LRT")
+###### Likelihood Ratio Test ######  -> not used to select models since AIC used instead
+#fit2 <- glm(Win ~ x1 + x2, data = ctrain, family = binomial)
+#anova(fit, fit2, test = "LRT")
 
 # can also check for separation using separation.detection()
 # each column shows convergence of standard errors for betas
@@ -206,10 +204,81 @@ influence.measures(fit)
 ### plot Cook's distance
 plot(fit2, 4, n.id = 5) # n.id = #points identified on the plot
 
-### dfbetas plots
-# some variable:
-dfbetasPlots(fit, terms = "Number_of_Competitor_Bids", id.n = 5,
-             col = ifelse(fit$y == 1, "red", "blue"))
+############################################
+########  DF BETAS ANALYSIS  ###############
+############################################
+## By B.Jenista
+
+#############   Model 1 (fit1)   ###########
+
+# comp.count:
+dfbetasPlots(fit1, terms = "comp.count", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+# Number of Competitor Bids:
+dfbetasPlots(fit1, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit1, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+# Estimated Cost:
+dfbetasPlots(fit1, terms = "Estimated_Cost__Millions_", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+
+#############   Model 2   ##################
+
+# Number of Competitor Bids:
+dfbetasPlots(fit2, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit2$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit2, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit2$y == 1, "red", "blue"))
+
+
+#############   Model 3   ##################
+
+# comp.count:
+dfbetasPlots(fit3.step, terms = "comp.count", id.n = 5,
+             col = ifelse(fit3.step$y == 1, "red", "blue"))
+
+# Number of Competitor Bids:
+dfbetasPlots(fit3.step, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit3.step$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit3.step, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit3$y == 1, "red", "blue"))
+
+
+#############   Model 4   ##################
+# comp.count:
+dfbetasPlots(fit4, terms = "comp.count", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Number of Competitor Bids:
+dfbetasPlots(fit4, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit4, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Estimated Cost:
+dfbetasPlots(fit4, terms = "Estimated_Cost__Millions_", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Sector:
+dfbetasPlots(fit4, terms = "Sector", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+###  The only influential point consistent across all 4 models is ID 374 with regards to Region (threshold ~ >1.0) ###
+###  The recommended threshold of > 2*sqrt(1/n) is ~ 0.1 when n=382 which results in too many points to be useful  ###
+###  If you have any concerns/questions, ask Bill for more info  ###
+
 
 ### partial residuals ###
 # Number of Competitor Bids:
