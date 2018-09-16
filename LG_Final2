@@ -1,0 +1,482 @@
+############################################
+########  LOGISTIC PROJECT  ################
+############################################
+
+
+rm(list=ls())
+
+# install.packages("pastecs")
+# install.packages('corrplot')
+# install.packages("ROCR")
+# install.packages("DescTools")
+# install.packages("Hmisc")
+# install.packages('visreg')
+# install.packages('car')
+# install.packages("caret")
+
+
+## All libraries given to us in code snippets in case we need them
+library(haven)
+library(pastecs)
+library(caret)
+library(corrplot)
+library(MASS)
+library(visreg)
+library(MASS)
+# library(brglm)
+# library(ROCR) 
+# library(DescTools)
+# library(Hmisc)
+library(mgcv)
+library(car)
+library(tidyverse)
+
+
+#setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
+#setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
+#setwd("C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression")
+
+#path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
+#path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
+path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
+#path <- "C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression\\"
+
+input.file <- "construction.sas7bdat"
+construction <- read_sas(paste(path, input.file,sep = ""))
+
+############################################
+########  CLEANING   #######################
+############################################
+#by S.Powell
+
+# ADDING METRICS OF INTEREST
+# of competitors
+construction <- construction %>%
+  mutate(comp.count = select(., Competitor_A:Competitor_J) %>% apply(1, sum, na.rm=TRUE)) %>%
+  mutate(profit = Bid_Price__Millions_ - Estimated_Cost__Millions_) %>%
+  mutate(perc_over_bid = (Bid_Price__Millions_ - Winning_Bid_Price__Millions_)/Winning_Bid_Price__Millions_) %>%
+  mutate(Win = as.numeric(as.factor(Win_Bid))-1) #converts to factor levels 1 and 2 then subtracts 1 for binary
+#needed 0,1 for regression modelling later
+
+#Defining sectors
+Sec.names <- c("Transportation",
+  "Lodging",
+  "Multi-family residential",
+  "Amusement/recreation",
+  "Highway/street",
+  "Education",
+  "Healthcare",
+  "Manufacturing",
+  "Power",
+  "Military") #assumed order based on PDF. No actual key provided
+Sector <- as.character(c(1:10))
+sector.names <- as.data.frame(cbind(Sector, Sec.names))
+construction$Sector <- as.character(construction$Sector) 
+construction <- left_join(construction, sector.names, by="Sector")
+construction <- construction[,c(1:4,24,5:23)] #reordering to check merge success
+
+
+#DIVIDE INTO TRAINING / VALIDATION SETS
+set.seed(123)
+train_ind <- createDataPartition(construction$Estimated_Cost__Millions_, p=0.70, list=FALSE)
+help("createDataPartition")
+ctrain <<- construction[train_ind,]
+cval <- construction[-train_ind,]
+
+#DIVIDE TRAINIG INTO CONTINUOUS, CATEGORICAL
+continuous <- c(
+  "Estimated_Cost__Millions_",
+  "Estimated_Years_to_Complete",
+  "Bid_Price__Millions_",
+  "Number_of_Competitor_Bids",
+  "Winning_Bid_Price__Millions_",
+  "Cost_After_Engineering_Estimate_",
+  "profit",
+  "perc_over_bid",
+  "comp.count")
+
+ctrain_cont <- dplyr::select(ctrain, continuous)
+ctrain_cat <- dplyr::select(ctrain, setdiff(colnames(ctrain), continuous))
+ctrain_cat <- as.data.frame(sapply(ctrain_cat, as.character)) #converting binary dbls to factors
+ctrain_cont2 <- dplyr::select(ctrain_cont, setdiff(colnames(ctrain_cont), c("Estimated_Cost__Millions_", "Winning_Bid_Price__Millions_"))) #reduced to get rid of some redundant variables
+
+
+############################################
+########  DATA EXPLORATION  ################
+############################################
+#By G.Wilson and S.Powell
+
+#bar charts & histos
+ggplot(data=ctrain, aes(Sector, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(Region_of_Country, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(Competitor_A, fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(factor(Number_of_Competitor_Bids), fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(factor(comp.count), fill=Win_Bid)) + geom_bar()
+ggplot(data=ctrain, aes(Winning_Bid_Price__Millions_, fill=Win_Bid)) + geom_histogram()
+ggplot(data=ctrain, aes(Estimated_Years_to_Complete, fill=Win_Bid)) + geom_histogram()
+ggplot(data=ctrain, aes(Number_of_Competitor_Bids, fill=Win_Bid)) + geom_histogram()
+hist(ctrain$Number_of_Competitor_Bids, breaks=25)
+plot(ctrain_cont2)
+
+#Correlation matrix of continuous variables APP A?
+c.cor <- cor(ctrain_cont) 
+corrplot(c.cor, method = "number") #Some are perfectly correlated, comp.count not that strong with number of competitor bids!?
+
+#summary statistics of continuous, APP A?
+options(scipen=100)
+options(digits=2)
+stat.desc(ctrain_cont) 
+
+# basic frequency tables 
+# Warning: 
+  # prop.table() determines table values as proportion of sum of ALL values in table
+  # addmargins() sums rows and columns to give "sum" values on ends
+  # Thus, use prop.table() within addmargins() to avoid counting sums in proportion calcs
+table1 <- round(prop.table(with(ctrain, table(Region_of_Country, Win_Bid))),4)
+table2 <- addmargins(round(prop.table(with(ctrain, table(Sector, Win_Bid))),4))
+table2
+table3 <- with(ctrain, table(Sector, Region_of_Country, Win_Bid))
+round(prop.table(table3),4)
+round(addmargins(prop.table(table3)),4)
+
+#difference in freq created by competitors
+freq.expec <- function(var){
+  #calcs normal frequency table
+  freq.tab <- addmargins(prop.table(with(ctrain, table(var, Win_Bid))))
+  #calcs difference b/w freq table and expected freq table
+  diff <- round((freq.tab - chisq.test(freq.tab)$expected),4)
+  print(diff)
+}
+competitors <- select(ctrain, Competitor_A:Competitor_J)
+lapply(competitors, freq.expec) # Max diff from expected frequency: 4% with competitor H and F
+
+
+############################################
+########  REGRESSION ANALYSIS  #############
+############################################
+
+# BUILDING CANDIDATE MODELS by Team during 2018.09.13 Meeting
+fit1 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + Estimated_Cost__Millions_, 
+           data = ctrain, family = binomial(link = "logit"))
+summary(fit1)  ## AIC - 185
+
+fit2 <- glm(Win ~ Region_of_Country + Number_of_Competitor_Bids, 
+           data = ctrain, family = binomial(link = "logit"))
+
+summary(fit2) ## AIC - 189.9
+
+(fit1$aic)/(fit2$aic)
+
+fit3 <- glm(Win ~ Estimated_Years_to_Complete + Estimated_Cost__Millions_ +
+              Competitor_D + comp.count + Number_of_Competitor_Bids + Region_of_Country,
+            data = ctrain, family = binomial(link = "logit"))
+summary(fit3)
+fit3.step <- stepAIC(fit3, direction=c('both'))
+
+summary(fit3.step)  ## AIC - 183
+
+fit4 <- glm(Win ~ comp.count + Number_of_Competitor_Bids + Region_of_Country + 
+              Estimated_Cost__Millions_ + Sector, 
+            data = ctrain, family = binomial(link = "logit"))
+summary(fit4) ## AIC - 173
+# Ran stepAIC() on fit4, but it just removed Estimated_Cost var for AIC of 171.6
+
+# CANDIDATE MODELS
+fit1
+fit2
+fit3.step
+fit4
+
+
+
+exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
+
+
+###### Likelihood Ratio Test ######  -> not used to select models since AIC used instead
+#fit2 <- glm(Win ~ x1 + x2, data = ctrain, family = binomial)
+#anova(fit, fit2, test = "LRT")
+
+# can also check for separation using separation.detection()
+# each column shows convergence of standard errors for betas
+# if any keep changing, then it didn't converge
+separation.detection(fit)
+
+influence.measures(fit)
+
+### plot Cook's distance
+plot(fit2, 4, n.id = 5) # n.id = #points identified on the plot
+
+############################################
+########  DF BETAS ANALYSIS  ###############
+############################################
+## By B.Jenista
+
+#############   Model 1 (fit1)   ###########
+
+# comp.count:
+dfbetasPlots(fit1, terms = "comp.count", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+# Number of Competitor Bids:
+dfbetasPlots(fit1, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit1, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+# Estimated Cost:
+dfbetasPlots(fit1, terms = "Estimated_Cost__Millions_", id.n = 5,
+             col = ifelse(fit1$y == 1, "red", "blue"))
+
+
+#############   Model 2   ##################
+
+# Number of Competitor Bids:
+dfbetasPlots(fit2, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit2$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit2, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit2$y == 1, "red", "blue"))
+
+
+#############   Model 3   ##################
+
+# comp.count:
+dfbetasPlots(fit3.step, terms = "comp.count", id.n = 5,
+             col = ifelse(fit3.step$y == 1, "red", "blue"))
+
+# Number of Competitor Bids:
+dfbetasPlots(fit3.step, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit3.step$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit3.step, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit3$y == 1, "red", "blue"))
+
+
+#############   Model 4   ##################
+# comp.count:
+dfbetasPlots(fit4, terms = "comp.count", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Number of Competitor Bids:
+dfbetasPlots(fit4, terms = "Number_of_Competitor_Bids", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Region:
+dfbetasPlots(fit4, terms = "Region_of_Country", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Estimated Cost:
+dfbetasPlots(fit4, terms = "Estimated_Cost__Millions_", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+# Sector:
+dfbetasPlots(fit4, terms = "Sector", id.n = 5,
+             col = ifelse(fit4$y == 1, "red", "blue"))
+
+###  The only influential point consistent across all 4 models is ID 374 with regards to Region (threshold ~ >1.0) ###
+###  The recommended threshold of > 2*sqrt(1/n) is ~ 0.1 when n=382 which results in too many points to be useful  ###
+###  If you have any concerns/questions, ask Bill for more info  ###
+
+
+### Partial residual Plots ###
+### Grant F, 09/16/2018
+## Fit 1:
+
+visreg(fit1, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+visreg(fit1, "Estimated_Cost__Millions_", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Cost in Millions",
+       x = "some variable", y = "partial (deviance) residuals")
+## Fit 2
+visreg(fit2, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+## Fit 3
+visreg(fit3, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+visreg(fit3, "Estimated_Years_to_Complete", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Years to Complete",
+       x = "some variable", y = "partial (deviance) residuals") # this one doesn't look good
+visreg(fit3, "Estimated_Cost__Millions_", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Cost in Millions",
+       x = "some variable", y = "partial (deviance) residuals")
+## Fit 4
+visreg(fit4, "Number_of_Competitor_Bids", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Number of Competitor Bids",
+       x = "some variable", y = "partial (deviance) residuals")
+visreg(fit4, "Estimated_Cost__Millions_", gg = TRUE, points = list(col = "black")) +
+  geom_smooth(col = "red", fill = "red") + theme_bw() +
+  labs(title = "Partial Residual Plot for Estimated Cost in Millions",
+       x = "some variable", y = "partial (deviance) residuals")
+
+### End Grant Code
+
+### GAMs ###
+# fit model as a GAM:
+fit.gam <- gam(Win ~ s(x1) + x2,
+               data = ctrain, family = binomial, method = "REML")
+summary(fit.gam)
+
+# plot estimated effect of some variable
+plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of some variable", jit = TRUE,
+     seWithMean = TRUE)
+
+################################################
+#############  Model Assessment  ###############
+################################################
+
+### Beginning Gavins Code ###
+library(DescTools)
+install.packages("DescTools")
+
+### Getting the AIC and BIC of each Fitted Model ###
+
+AIC(fit1)
+BIC(fit1)
+
+AIC(fit2)
+BIC(fit2)
+
+AIC(fit3.step)
+BIC(fit3.step)
+
+AIC(fit4)
+BIC(fit4)
+
+### Finding the "R Squared" for each Fitted Model ###
+
+PseudoR2(fit1, which = c("Cox", "Nagelkerke", "McFadden"))
+PseudoR2(fit2, which = c("Cox", "Nagelkerke", "McFadden"))
+PseudoR2(fit3.step, which = c("Cox", "Nagelkerke", "McFadden"))
+PseudoR2(fit4, which = c("Cox", "Nagelkerke", "McFadden"))
+
+### Matt has a personal preference for McFadden and according to the output fit4 has the highest "R squared" ###
+
+### Brier score function ###
+brier_score <- function(obj, new_x = NULL, new_y = NULL){
+  # computes [scaled] brier score
+  #
+  # inputs:
+  # 1. obj: either a model from glm() or a data frame.
+  #         the data frame must have a vector responses "y" and a vector of
+  #         either probabilities "p" or linear predictor "lp".
+  # 2. new_x: specify new dataset to get predicted probabilities for new obs.
+  #             if NULL, the estimated probabilities from original obs will
+  #             be used.
+  # 3. new_y: use new responses. if NULL, original ones will be used.
+  #
+  # output:
+  #   brier score, scaled brier score , max brier score
+  
+  if(is.null(new_y)){
+    y <- obj$y
+  } else {
+    y <- new_y
+  }
+  
+  p_obs <- mean(y)
+  
+  if(any(class(obj) == "glm")){
+    if(is.null(new_x)){
+      p <- predict(obj, newdata = new_x, type = "response")
+      lp <- predict(obj, newdata = new_x, type = "link")
+    } else {
+      lp <- obj$linear
+      p <- fitted(obj)
+    }
+  } else if(is.null(obj$p)) {
+    lp <- obj$lp
+    p <- fitted(obj)
+  } else {
+    p <- obj$p
+    lp <- obj$linear
+  }
+  
+  # brier score
+  brier_score <- mean((y - p)^2)
+  
+  # max brier score is just the observed proportion
+  brier_max <- p_obs*((1 - p_obs)^2) + (1 - p_obs)*(p_obs^2)
+  
+  # scaled brier score
+  # ranges from 0 to 1---lower is better
+  brier_scaled <- brier_score/brier_max
+  # essentially, 1 - brier_scaled is the %improvement over null model
+  
+  res <- data.frame(brier_score = brier_score,
+                    brier_max = brier_max,
+                    brier_scaled = brier_scaled)
+  res
+}
+
+### Calculating the Brier Score for each Fitted Model ###
+
+brier_score(fit1)
+brier_score(fit2)
+brier_score(fit3.step)
+brier_score(fit4)
+
+### Finding the discrimination of each fitted Model ###
+### discrimination slope = mean(p1) - mean(p0) ###
+
+fit1D <- mean(fitted(fit1)[fit1$y == 1]) - mean(fitted(fit1)[fit1$y == 0])
+fit2D <- mean(fitted(fit2)[fit2$y == 1]) - mean(fitted(fit2)[fit2$y == 0])
+fit3D <- mean(fitted(fit3.step)[fit3.step$y == 1]) - mean(fitted(fit3.step)[fit3.step$y == 0])
+fit4D <- mean(fitted(fit4)[fit4$y == 1]) - mean(fitted(fit4)[fit4$y == 0])
+
+### Seeing how well our Models fit the 1's and )'s ###
+# histogram of predicted probabilities by outcome
+# create data frame of outcome and predicted probabilities
+fit1df <- data.frame(y = fit1$y,
+                     phat = fitted(fit1))
+ggplot(fit1df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+fit2df <- data.frame(y = fit2$y,
+                     phat = fitted(fit2))
+ggplot(fit2df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+fit3df <- data.frame(y = fit3.step$y,
+                     phat = fitted(fit3.step))
+ggplot(fit1df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+fit4df <- data.frame(y = fit4$y,
+                     phat = fitted(fit4))
+ggplot(fit1df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+### c-statistic and Somers' D ###
+# predicted prob goes first, outcome second
+rcorr.cens(fitted(fit), fit$y)[-c(5, 6, 9)] # ignoring output i don't need
+
+## predictions
+
+### Scroring the new data based on Each Model Fit ###
+# type = "link" will return the predicted log(odds) for each of these subjects
+fit1scores <- predict(fit1, newdata = cval, type = "link")       ## Scores the new data
+fit2scores <- predict(fit2, newdata = cval, type = "link") 
+fit3scroes <- predict(fit3.step, newdata = cval, type = "link") 
+fit4scores <- predict(fit4, newdata = cval, type = "link") 
