@@ -338,11 +338,32 @@ plot(fit.gam, ylab = "f(some variable)", shade = TRUE, main = "effect of some va
 #############  Model Assessment  ###############
 ################################################
 
-# AIC and BIC
-AIC(fit)
-BIC(fit)
+### Beginning Gavins Code ###
+library(DescTools)
+#install.packages("DescTools")
 
-PseudoR2(fit, which = c("Cox", "Nagelkerke", "McFadden"))
+### Getting the AIC and BIC of each Fitted Model ###
+
+AIC(fit1)
+BIC(fit1)
+
+AIC(fit2)
+BIC(fit2)
+
+AIC(fit3.step)
+BIC(fit3.step)
+
+AIC(fit4)
+BIC(fit4)
+
+### Finding the "R Squared" for each Fitted Model ###
+
+PseudoR2(fit1, which = c("Cox", "Nagelkerke", "McFadden"))
+PseudoR2(fit2, which = c("Cox", "Nagelkerke", "McFadden"))
+PseudoR2(fit3.step, which = c("Cox", "Nagelkerke", "McFadden"))
+PseudoR2(fit4, which = c("Cox", "Nagelkerke", "McFadden"))
+
+### Matt has a personal preference for McFadden and according to the output fit4 has the highest "R squared" ###
 
 ### Brier score function ###
 brier_score <- function(obj, new_x = NULL, new_y = NULL){
@@ -358,7 +379,7 @@ brier_score <- function(obj, new_x = NULL, new_y = NULL){
   # 3. new_y: use new responses. if NULL, original ones will be used.
   #
   # output:
-  #   brier score, scaled brier score
+  #   brier score, scaled brier score , max brier score
   
   if(is.null(new_y)){
     y <- obj$y
@@ -401,28 +422,62 @@ brier_score <- function(obj, new_x = NULL, new_y = NULL){
   res
 }
 
-brier_score(fit)
+### Calculating the Brier Score for each Fitted Model ###
 
+brier_score(fit1)
+brier_score(fit2)
+brier_score(fit3.step)
+brier_score(fit4)
 
+### Finding the discrimination of each fitted Model ###
 ### discrimination slope = mean(p1) - mean(p0) ###
-D <- mean(fitted(fit)[fit$y == 1]) - mean(fitted(fit)[fit$y == 0])
-# alternatively:
-# D <- diff(aggregate(fitted(fit), by = list(fit$y == 0, fit$y == 1), FUN = mean)$x)
 
+fit1D <- mean(fitted(fit1)[fit1$y == 1]) - mean(fitted(fit1)[fit1$y == 0])
+fit2D <- mean(fitted(fit2)[fit2$y == 1]) - mean(fitted(fit2)[fit2$y == 0])
+fit3D <- mean(fitted(fit3.step)[fit3.step$y == 1]) - mean(fitted(fit3.step)[fit3.step$y == 0])
+fit4D <- mean(fitted(fit4)[fit4$y == 1]) - mean(fitted(fit4)[fit4$y == 0])
+
+### Seeing how well our Models fit the 1's and )'s ###
 # histogram of predicted probabilities by outcome
 # create data frame of outcome and predicted probabilities
-df <- data.frame(y = fit$y,
-                 phat = fitted(fit))
-ggplot(df, aes(phat, fill = factor(y))) +
+fit1df <- data.frame(y = fit1$y,
+                     phat = fitted(fit1))
+ggplot(fit1df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+fit2df <- data.frame(y = fit2$y,
+                     phat = fitted(fit2))
+ggplot(fit2df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+fit3df <- data.frame(y = fit3.step$y,
+                     phat = fitted(fit3.step))
+ggplot(fit1df, aes(phat, fill = factor(y))) +
+  geom_density(alpha = 0.2) +
+  labs(x = "predicted probability",
+       fill = "low")
+
+fit4df <- data.frame(y = fit4$y,
+                     phat = fitted(fit4))
+ggplot(fit1df, aes(phat, fill = factor(y))) +
   geom_density(alpha = 0.2) +
   labs(x = "predicted probability",
        fill = "low")
 
 ### c-statistic and Somers' D ###
 # predicted prob goes first, outcome second
+# this line of code does not work! (for Grant)
 rcorr.cens(fitted(fit), fit$y)[-c(5, 6, 9)] # ignoring output i don't need
 
 ## predictions
 
+### Scroring the new data based on Each Model Fit ###
 # type = "link" will return the predicted log(odds) for each of these subjects
-predict(fit, newdata = cval, type = "link")       ## Scores the new data
+fit1scores <- predict(fit1, newdata = cval, type = "link")       ## Scores the new data
+fit2scores <- predict(fit2, newdata = cval, type = "link") 
+fit3scroes <- predict(fit3.step, newdata = cval, type = "link") 
+fit4scores <- predict(fit4, newdata = cval, type = "link") 
