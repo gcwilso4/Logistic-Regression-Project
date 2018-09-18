@@ -34,12 +34,15 @@ library(tidyverse)
 
 #setwd("C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project")
 #setwd("C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\lab and hw\\Logistic\\Project\\")
-setwd("C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression")
+#setwd("C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression")
+setwd("C:\\Users\\molly\\OneDrive\\Documents\\Logistic Regression\\MSA2019LogisticData\\data\\")
 
 #path <- "C:\\Users\\Bill\\Documents\\NCSU\\Course Work\\Fall\\Logistic Regression\\Final Project\\"
 #path <- "C:\\Users\\Steven\\Documents\\MSA\\Analytics Foundations\\data\\Logistic Data\\"
 #path <- "C:\\Users\\gavin\\Desktop\\Logisitic_Regression_Data\\"
-path <- "C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression\\"
+#path <- "C:\\Users\\Grant\\Documents\\MSA\\Fall\\Logistic Regression\\"
+path <- "C:\\Users\\molly\\OneDrive\\Documents\\Logistic Regression\\MSA2019LogisticData\\data\\"
+
 
 input.file <- "construction.sas7bdat"
 construction <- read_sas(paste(path, input.file,sep = ""))
@@ -189,7 +192,7 @@ fit4
 
 
 
-exp(confint(fit))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
+exp(confint(fit1))               ## Get likelihood confidence intervals (Mass Library) --> exponentiated --> CI for odds ratio
 
 
 ###### Likelihood Ratio Test ######  -> not used to select models since AIC used instead
@@ -199,12 +202,49 @@ exp(confint(fit))               ## Get likelihood confidence intervals (Mass Lib
 # can also check for separation using separation.detection()
 # each column shows convergence of standard errors for betas
 # if any keep changing, then it didn't converge
-separation.detection(fit)
+separation.detection(fit1)
 
-influence.measures(fit)
+influence.measures(fit1)
 
-### plot Cook's distance
-plot(fit2, 4, n.id = 5) # n.id = #points identified on the plot
+
+
+### Molly ###
+
+### Cook's Distance for each model ###
+#Estimate of the influence of a single data point. 
+#Measures the effect of deleting this given observation. 
+#Points with a large Cook's distance are considered to merit closer examination in the analysis.
+
+#model 1
+cooks.distance(fit1)
+max(cooks.distance(fit1))
+plot(cooks.distance(fit1))
+plot(fit1, 4, n.id = 5) 
+#top 3 IDs: 374 (cook's D .11), 343, 115
+
+#model 2
+cooks.distance(fit2)
+max(cooks.distance(fit2))
+plot(cooks.distance(fit2))
+plot(fit2, 4, n.id = 5) 
+#top 3 IDs: 374 (cook's D .089), 1, 343
+
+#model 3
+cooks.distance(fit3.step)
+max(cooks.distance(fit3.step))
+plot(cooks.distance(fit3.step))
+plot(fit3.step, 4, n.id = 5)
+#top 3 IDs: 374 (cook's D .099), 343, 1
+
+#model 4
+cooks.distance(fit4)
+max(cooks.distance(fit4))
+plot(cooks.distance(fit4))
+plot(fit4, 4, n.id = 5)
+#top 3 IDs: 30 (cook's D .08), 374, 343
+
+
+
 
 ############################################
 ########  DF BETAS ANALYSIS  ###############
@@ -472,6 +512,8 @@ ggplot(fit1df, aes(phat, fill = factor(y))) +
 # predicted prob goes first, outcome second
 # this line of code does not work! (for Grant)
 rcorr.cens(fitted(fit), fit$y)[-c(5, 6, 9)] # ignoring output i don't need
+
+
 
 ## predictions
 
