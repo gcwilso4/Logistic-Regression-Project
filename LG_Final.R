@@ -64,6 +64,11 @@ mytable <- table(construction$Number_of_Competitor_Bids)
 mytable 
 #only 3 with 0 bids
 
+#crosstab of bid numbers and how many wins
+mytable1 <- table(construction$Win_Bid, construction$Number_of_Competitor_Bids) 
+mytable1
+#obviously won all with 0. won 90% between 1-3 bids
+
 mean(construction$Number_of_Competitor_Bids)
 #12 average bids
 
@@ -72,7 +77,8 @@ mean(construction$Number_of_Competitor_Bids)
 
 
 #if we decide to remove this population, use table below for analysis
-bid0_remove <- subset(construction, Number_of_Competitor_Bids > 0)
+bid0_remove <- subset(construction, Number_of_Competitor_Bids = 0)
+View(bid0_remove)
 
 
 
