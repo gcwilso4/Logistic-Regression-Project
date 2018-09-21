@@ -47,6 +47,35 @@ path <- "C:\\Users\\molly\\OneDrive\\Documents\\Logistic Regression\\MSA2019Logi
 input.file <- "construction.sas7bdat"
 construction <- read_sas(paste(path, input.file,sep = ""))
 
+
+############################################
+########  EXPLORATION  #####################
+############################################
+#M. Rubin
+#Question: Should we consider bids where there were no competitors?
+#Answer: probably doesn't change our results much, only .5% of population.
+
+View(construction)
+dim(construction)
+#543 obs
+
+#frequency table number of competitor bids
+mytable <- table(construction$Number_of_Competitor_Bids) 
+mytable 
+#only 3 with 0 bids
+
+mean(construction$Number_of_Competitor_Bids)
+#12 average bids
+
+3/543
+#only .5% of the bids with 0 competitors
+
+
+#if we decide to remove this population, use table below for analysis
+bid0_remove <- subset(construction, Number_of_Competitor_Bids > 0)
+
+
+
 ############################################
 ########  CLEANING   #######################
 ############################################
