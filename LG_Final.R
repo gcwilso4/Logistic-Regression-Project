@@ -640,14 +640,25 @@ D <- round(D, 5) #rounding for plot labelling later
 D
 
 # PLOT OF DISCRIMINATION
-df <- data.frame(Win = cval$Win_Bid,
-                 phat = scores)
-ggplot(df, aes(phat, fill = Win_Bid)) +
+ggplot(c_scores, aes(scores, fill = Win_Bid)) +
   geom_density(alpha = 0.2) +
   labs(title="Density Plot of Predicted Probabilities",
        subtitle=paste("Coef. of Discrimination = ",D,sep=""),
        x = "Predicted Probability of Winning Bid",
        y= "Density",
+       fill = "Bid \nWon") +
+  theme_minimal()
+
+ggplot(c_scores) +
+  geom_point(aes(x=Estimated_Cost__Millions_, y=scores , color = Win_Bid), alpha = 0.4) +
+  labs(title="Scatter Plot of Predicted Probabilities",
+       y = "Predicted Probability of Winning Bid",
+       fill = "Bid \nWon") +
+  theme_minimal()
+ggplot(c_scores) +
+  geom_point(aes(x=Number_of_Competitor_Bids, y=scores , color = Win_Bid), alpha = 0.4) +
+  labs(title="Scatter Plot of Predicted Probabilities",
+       y = "Predicted Probability of Winning Bid",
        fill = "Bid \nWon") +
   theme_minimal()
 # Flat, even distribution for Winning bids, Great for Non-wins 
@@ -774,14 +785,15 @@ with(classif_table, plot(threshold, youdenJ))
 #        lty = c(2,NA), pch= c(NA, 1), lwd = c(1,2))
 
 # FINAL ROC PLOT w/ ideal threshold
-ggplot(classif_table) +
+roc_curve <- ggplot(classif_table) +
   geom_line(aes(x=fpr, y=tpr, color=threshold), size=2) +
   scale_color_gradient(low="green", high="red") +
   labs(x="False Positive Rate", y= "False Negative Rate", color="Pred. Prob.\nThreshold ",
        title="ROC Curve of Validation Data") +
-  geom_point(x= (1-max.tnr), y= max.tpr, size=3, shape=17)+
-  geom_text(x= .02+(1-max.tnr), y= -.02+max.tpr, hjust=0, vjust=1, 
-            label=paste("Ideal threshold for \nassumed costs (",ideal_threshold,")"))+
   theme_minimal()
+roc_curve
 
+roc_curve + geom_point(x= (1-max.tnr), y= max.tpr, size=3, shape=17) +
+  geom_text(x= .02+(1-max.tnr), y= -.02+max.tpr, hjust=0, vjust=1, 
+            label=paste("Ideal threshold for \nassumed costs (",ideal_threshold,")"))
 
