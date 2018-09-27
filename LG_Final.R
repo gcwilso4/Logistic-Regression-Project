@@ -758,11 +758,8 @@ classif_table <- data.frame(threshold = perf@alpha.values[[1]],
 #colnames(classif_table) <- c("Threshold", "True Positive Rate", "True Negative Rate", "False Positive Rate")
 
 # YOUDEN'S INDEX: 
-# added hypothetical weights for tpr (sens) and tnr (spec), but not req'd in HW
-avg_profit <- mean(construction$Win_profit) #assumes all winner profits will be representative of IAA Construction profit
-avg_profit
-pos.value <- avg_profit # value of won bid: potential profit (in millions $) not realized 
-neg.value <- .005  # cost of failed bid: $5k of marketing cost wasted
+pos.value <- 12 
+neg.value <- 3
 wt <- pos.value/(pos.value+neg.value) # Need to confirm math of wt...
 wt
 
@@ -771,6 +768,7 @@ classif_table$youdenJ <- with(classif_table, (2*(wt*tpr + (1-wt)*tnr) - 1))
 # find row with max
 classif_table[which.max(classif_table$youdenJ),]$threshold
 ideal_threshold <- round(classif_table[which.max(classif_table$youdenJ),]$threshold,3)
+ideal_threshold
 max.tpr <- classif_table[which.max(classif_table$youdenJ),]$tpr
 max.tnr <- classif_table[which.max(classif_table$youdenJ),]$tnr
 with(classif_table, plot(threshold, youdenJ)) 
@@ -790,6 +788,7 @@ roc_curve <- ggplot(classif_table) +
   scale_color_gradient(low="green", high="red") +
   labs(x="False Positive Rate", y= "False Negative Rate", color="Pred. Prob.\nThreshold ",
        title="ROC Curve of Validation Data") +
+  geom_abline(slope=1, lty=2) +
   theme_minimal()
 roc_curve
 
